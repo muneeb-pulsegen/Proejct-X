@@ -1,17 +1,26 @@
 import Link from "next/link";
+import { Info } from "lucide-react";
 
+import CoachDashboardCharts from "@/components/CoachDashboardCharts";
 import type { DashboardPayload } from "@/lib/analysis";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 function InfoChip({ text }: { text: string }) {
   return (
-    <details className="group relative">
-      <summary className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-500 marker:hidden">
-        i
-      </summary>
-      <div className="absolute right-0 top-10 z-10 w-64 rounded-2xl border border-slate-200 bg-white p-3 text-sm leading-6 text-slate-600 shadow-soft">
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          aria-label="Show metric explanation"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+          type="button"
+        >
+          <Info className="size-4" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">
         {text}
-      </div>
-    </details>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -32,36 +41,9 @@ export default function CoachDashboardView({ dashboard }: { dashboard: Dashboard
         ))}
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="panel p-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Severity mix</p>
-          <div className="mt-6 space-y-4">
-            {dashboard.severityBreakdown.map((item) => (
-              <div className="space-y-2" key={item.label}>
-                <div className="flex items-center justify-between text-sm text-slate-600">
-                  <span>{item.label}</span>
-                  <span>{item.value}</span>
-                </div>
-                <div className="h-2 rounded-full bg-slate-100">
-                  <div
-                    className={`h-2 rounded-full ${item.label === "Severe" ? "bg-rose-500" : item.label === "Moderate" ? "bg-amber-500" : "bg-emerald-500"}`}
-                    style={{ width: `${Math.max(8, item.value * 16)}px` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+      <CoachDashboardCharts dashboard={dashboard} />
 
-          <p className="mt-8 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Healing windows</p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {dashboard.healingWindowSummary.map((item) => (
-              <div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700" key={item.label}>
-                {item.label}: {item.value}
-              </div>
-            ))}
-          </div>
-        </div>
-
+      <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr]">
         <div className="panel p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Players needing attention</p>
           <div className="mt-6 space-y-4">
@@ -86,9 +68,7 @@ export default function CoachDashboardView({ dashboard }: { dashboard: Dashboard
             )}
           </div>
         </div>
-      </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr]">
         <div className="panel p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Recent reports</p>
           <div className="mt-6 space-y-4">

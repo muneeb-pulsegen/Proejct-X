@@ -49,10 +49,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAuthPage && session) {
-    return NextResponse.redirect(new URL(getRoleHomePath(session.role), request.url));
-  }
-
   if (isPlayerRoute && session?.role !== "player") {
     return NextResponse.redirect(new URL(getRoleHomePath(session!.role), request.url));
   }

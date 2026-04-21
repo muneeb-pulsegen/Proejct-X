@@ -127,7 +127,7 @@ export async function requireCurrentUser(allowedRoles?: UserRole[]) {
   const user = await getCurrentUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/api/logout?next=/login");
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {

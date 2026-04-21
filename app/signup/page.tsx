@@ -1,6 +1,15 @@
-import AuthForm from "@/components/AuthForm";
+import { redirect } from "next/navigation";
 
-export default function SignupPage() {
+import AuthForm from "@/components/AuthForm";
+import { getCurrentUser, getRoleHomePath } from "@/lib/auth";
+
+export default async function SignupPage() {
+  const user = await getCurrentUser();
+
+  if (user) {
+    redirect(getRoleHomePath(user.role));
+  }
+
   return (
     <section className="grid flex-1 gap-10 py-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
       <div className="space-y-6">

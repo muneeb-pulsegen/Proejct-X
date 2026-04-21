@@ -1,4 +1,7 @@
+import { redirect } from "next/navigation";
+
 import AuthForm from "@/components/AuthForm";
+import { getCurrentUser, getRoleHomePath } from "@/lib/auth";
 
 type LoginPageProps = {
   searchParams: Promise<{
@@ -8,6 +11,11 @@ type LoginPageProps = {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { next } = await searchParams;
+  const user = await getCurrentUser();
+
+  if (user) {
+    redirect(getRoleHomePath(user.role));
+  }
 
   return (
     <section className="grid flex-1 gap-10 py-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
