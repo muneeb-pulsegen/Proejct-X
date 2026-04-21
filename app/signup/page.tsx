@@ -6,10 +6,10 @@ export default function SignupPage() {
       <div className="space-y-6">
         <span className="eyebrow">Create your account</span>
         <div className="space-y-4">
-          <h1 className="section-title">Start uploading wound images with a secure account.</h1>
+          <h1 className="section-title">Create a player or coach account and enter the right workspace.</h1>
           <p className="section-copy">
-            The sign-up flow is intentionally simple so the experience stays friction-light while
-            still protecting the upload and results surfaces.
+            Players can submit injuries and manage invites. Coaches automatically get a team and
+            unlock the dashboard plus roster management.
           </p>
         </div>
         <div className="panel max-w-xl p-6">
@@ -17,8 +17,8 @@ export default function SignupPage() {
             What you get
           </p>
           <div className="mt-4 space-y-4 text-sm leading-7 text-slate-600">
-            <p>Immediate access to the upload workspace right after account creation.</p>
-            <p>Persistent storage when MongoDB is configured, plus an in-memory fallback for local demos.</p>
+            <p>Coach signup auto-creates a team, while player signup starts unassigned until a coach invites them.</p>
+            <p>Profile, reporting, and team workflows are already wired so both roles land in a complete product experience.</p>
           </div>
         </div>
       </div>

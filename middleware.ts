@@ -4,43 +4,66 @@ import { jwtVerify } from "jose/jwt/verify";
 
 const AUTH_COOKIE_NAME = "injuryx_token";
 const AUTH_PAGES = new Set(["/login", "/signup"]);
-const PROTECTED_PREFIXES = ["/upload", "/result"];
+const SHARED_AUTH_PREFIXES = ["/profile", "/result"];
+const PLAYER_PREFIXES = ["/upload", "/player"];
+const COACH_PREFIXES = ["/coach"];
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "injuryx-dev-secret-change-me"
 );
 
-async function hasValidSession(token: string) {
+type SessionPayload = {
+  sub: string;
+  email: string;
+  role: "player" | "coach";
+  teamId: string | null;
+};
+
+function getRoleHomePath(role: SessionPayload["role"]) {
+  return role === "coach" ? "/coach/dashboard" : "/player/dashboard";
+}
+
+async function getSession(token: string) {
   try {
-    await jwtVerify(token, JWT_SECRET, {
+    const verified = await jwtVerify(token, JWT_SECRET, {
       algorithms: ["HS256"]
     });
 
-    return true;
+    return verified.payload as SessionPayload;
   } catch {
-    return false;
+    return null;
   }
 }
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
   const pathname = request.nextUrl.pathname;
-  const isProtectedRoute = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const session = token ? await getSession(token) : null;
   const isAuthPage = AUTH_PAGES.has(pathname);
-  const isAuthenticated = token ? await hasValidSession(token) : false;
+  const needsSharedAuth = SHARED_AUTH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const isPlayerRoute = PLAYER_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const isCoachRoute = COACH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
-  if (isProtectedRoute && !isAuthenticated) {
+  if ((needsSharedAuth || isPlayerRoute || isCoachRoute) && !session) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAuthPage && isAuthenticated) {
-    return NextResponse.redirect(new URL("/upload", request.url));
+  if (isAuthPage && session) {
+    return NextResponse.redirect(new URL(getRoleHomePath(session.role), request.url));
+  }
+
+  if (isPlayerRoute && session?.role !== "player") {
+    return NextResponse.redirect(new URL(getRoleHomePath(session!.role), request.url));
+  }
+
+  if (isCoachRoute && session?.role !== "coach") {
+    return NextResponse.redirect(new URL(getRoleHomePath(session!.role), request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/upload/:path*", "/result/:path*", "/login", "/signup"]
+  matcher: ["/login", "/signup", "/profile/:path*", "/player/:path*", "/coach/:path*", "/upload/:path*", "/result/:path*"]
 };

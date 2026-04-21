@@ -1,20 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
+  hashPassword,
   isPasswordStrongEnough,
+  sessionFromUser,
   setAuthCookie,
   signAuthToken,
   validateEmailFormat,
-  hashPassword
+  validateName
 } from "@/lib/auth";
-import { createUser, findUserByEmail } from "@/lib/db";
+import { assignUserToTeam, createTeam, createUser, findUserByEmail, type UserRole } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const { email, password, role, name } = await request.json();
 
-    if (!validateEmailFormat(email) || typeof password !== "string") {
-      return NextResponse.json({ error: "Please provide a valid email and password." }, { status: 400 });
+    if (!validateEmailFormat(email) || typeof password !== "string" || !validateName(name)) {
+      return NextResponse.json(
+        { error: "Please provide a valid name, email, and password." },
+        { status: 400 }
+      );
+    }
+
+    if (role !== "player" && role !== "coach") {
+      return NextResponse.json({ error: "Please choose a valid account type." }, { status: 400 });
     }
 
     if (!isPasswordStrongEnough(password)) {
@@ -25,25 +34,43 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    const trimmedName = name.trim();
     const existingUser = await findUserByEmail(normalizedEmail);
 
     if (existingUser) {
       return NextResponse.json({ error: "An account with that email already exists." }, { status: 409 });
     }
 
-    const passwordHash = await hashPassword(password);
-    const user = await createUser({ email: normalizedEmail, passwordHash });
-    const token = signAuthToken({ sub: user.id, email: user.email });
+    const user = await createUser({
+      email: normalizedEmail,
+      passwordHash: await hashPassword(password),
+      role: role as UserRole,
+      name: trimmedName
+    });
+
+    let signedInUser = user;
+    let team = null;
+
+    if (user.role === "coach") {
+      team = await createTeam({
+        coachUserId: user.id,
+        name: `${trimmedName}'s Team`
+      });
+      signedInUser = (await assignUserToTeam(user.id, team.id)) || { ...user, teamId: team.id };
+    }
 
     const response = NextResponse.json({
       user: {
-        id: user.id,
-        email: user.email
-      }
+        id: signedInUser.id,
+        email: signedInUser.email,
+        role: signedInUser.role,
+        name: signedInUser.name,
+        teamId: signedInUser.teamId
+      },
+      team
     });
 
-    setAuthCookie(response, token);
-
+    setAuthCookie(response, signAuthToken(sessionFromUser(signedInUser)));
     return response;
   } catch (error) {
     if (typeof error === "object" && error && "code" in error && error.code === 11000) {

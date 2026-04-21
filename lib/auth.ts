@@ -1,6 +1,10 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import type { NextRequest, NextResponse } from "next/server";
+
+import { findUserById, type UserRecord, type UserRole } from "@/lib/db";
 
 export const AUTH_COOKIE_NAME = "injuryx_token";
 export const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -8,6 +12,8 @@ export const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 export type AuthTokenPayload = {
   sub: string;
   email: string;
+  role: UserRole;
+  teamId: string | null;
 };
 
 function getJwtSecret() {
@@ -20,6 +26,10 @@ export function validateEmailFormat(email: unknown) {
 
 export function isPasswordStrongEnough(password: string) {
   return password.trim().length >= 8;
+}
+
+export function validateName(name: unknown) {
+  return typeof name === "string" && name.trim().length >= 2;
 }
 
 export async function hashPassword(password: string) {
@@ -69,6 +79,19 @@ export function clearAuthCookie(response: NextResponse) {
   });
 }
 
+export function sessionFromUser(user: UserRecord): AuthTokenPayload {
+  return {
+    sub: user.id,
+    email: user.email,
+    role: user.role,
+    teamId: user.teamId
+  };
+}
+
+export function getRoleHomePath(role: UserRole) {
+  return role === "coach" ? "/coach/dashboard" : "/player/dashboard";
+}
+
 export function getAuthPayloadFromRequest(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
 
@@ -77,4 +100,39 @@ export function getAuthPayloadFromRequest(request: NextRequest) {
   }
 
   return verifyAuthToken(token);
+}
+
+export async function getSessionFromCookies() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
+
+  if (!token) {
+    return null;
+  }
+
+  return verifyAuthToken(token);
+}
+
+export async function getCurrentUser() {
+  const session = await getSessionFromCookies();
+
+  if (!session) {
+    return null;
+  }
+
+  return findUserById(session.sub);
+}
+
+export async function requireCurrentUser(allowedRoles?: UserRole[]) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    redirect(getRoleHomePath(user.role));
+  }
+
+  return user;
 }

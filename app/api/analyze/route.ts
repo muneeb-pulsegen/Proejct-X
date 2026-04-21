@@ -1,48 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { createMockAnalysis, isAllowedImage } from "@/lib/analysis";
 import { getAuthPayloadFromRequest } from "@/lib/auth";
-import {
-  createAnalysis,
-  findAnalysisByIdForUser,
-  type AnalysisResult
-} from "@/lib/db";
+import { createInjuryReport, findUserById } from "@/lib/db";
 
-const MOCK_ANALYSES: AnalysisResult[] = [
-  {
-    wound_type: "Diabetic Ulcer",
-    severity: "Moderate",
-    healing_time: "2-4 weeks",
-    confidence: 0.87,
-    suggestions: ["Clean wound daily", "Apply dressing", "Monitor redness and drainage"]
-  },
-  {
-    wound_type: "Pressure Sore",
-    severity: "Mild",
-    healing_time: "1-2 weeks",
-    confidence: 0.81,
-    suggestions: ["Relieve pressure often", "Keep skin dry", "Use a protective barrier cream"]
-  },
-  {
-    wound_type: "Venous Leg Ulcer",
-    severity: "Moderate",
-    healing_time: "3-6 weeks",
-    confidence: 0.84,
-    suggestions: ["Elevate the limb", "Maintain clean compression dressing", "Seek clinician follow-up"]
-  }
-];
+const MAX_IMAGE_LENGTH = 6_000_000;
 
-function isAllowedImage(imageData: string) {
-  return /^data:image\/(png|jpeg|jpg|webp);base64,/.test(imageData);
-}
-
-function mockAnalysis(imageData: string) {
-  let hash = 0;
-
-  for (let index = 0; index < imageData.length; index += 47) {
-    hash = (hash + imageData.charCodeAt(index) * (index + 1)) % 10000;
+function sanitizeExtraImages(images: unknown) {
+  if (!Array.isArray(images)) {
+    return [];
   }
 
-  return MOCK_ANALYSES[hash % MOCK_ANALYSES.length];
+  return images.filter((image): image is string => typeof image === "string");
 }
 
 export async function POST(request: NextRequest) {
@@ -53,63 +22,74 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Authentication required." }, { status: 401 });
     }
 
+    if (session.role !== "player") {
+      return NextResponse.json({ error: "Only players can submit injury reports." }, { status: 403 });
+    }
+
     const body = await request.json();
-    const imageData = typeof body.imageData === "string" ? body.imageData : "";
+    const injuryImageData = typeof body.injuryImageData === "string" ? body.injuryImageData : "";
+    const extraImages = sanitizeExtraImages(body.extraImages);
+    const injuryTitle = typeof body.injuryTitle === "string" ? body.injuryTitle.trim() : "";
+    const bodyArea = typeof body.bodyArea === "string" ? body.bodyArea.trim() : "";
+    const painLevel = Number(body.painLevel);
+    const notes = typeof body.notes === "string" ? body.notes.trim() : "";
 
-    if (!imageData || !isAllowedImage(imageData)) {
+    if (!injuryImageData || !isAllowedImage(injuryImageData)) {
       return NextResponse.json(
-        { error: "Please upload a PNG, JPG, or WEBP image." },
+        { error: "Please upload a PNG, JPG, or WEBP injury image." },
         { status: 400 }
       );
     }
 
-    if (imageData.length > 6_000_000) {
+    if (
+      injuryImageData.length > MAX_IMAGE_LENGTH ||
+      extraImages.some((image) => image.length > MAX_IMAGE_LENGTH || !isAllowedImage(image))
+    ) {
       return NextResponse.json(
-        { error: "Image is too large. Please keep uploads under 4 MB." },
+        { error: "Images are too large or invalid. Keep each one under 4 MB." },
         { status: 400 }
       );
     }
 
-    const result = mockAnalysis(imageData);
-    const analysis = await createAnalysis({
-      userId: session.sub,
-      imageData,
-      result
+    if (!injuryTitle || !bodyArea || Number.isNaN(painLevel) || painLevel < 1 || painLevel > 10) {
+      return NextResponse.json(
+        { error: "Please complete the injury title, body area, and pain level." },
+        { status: 400 }
+      );
+    }
+
+    const player = await findUserById(session.sub);
+
+    if (!player) {
+      return NextResponse.json({ error: "Player account not found." }, { status: 404 });
+    }
+
+    const analysis = createMockAnalysis({
+      injuryImageData,
+      bodyArea,
+      painLevel,
+      notes,
+      injuryTitle
+    });
+
+    const report = await createInjuryReport({
+      playerUserId: player.id,
+      teamId: player.teamId,
+      injuryImageData,
+      extraImages,
+      injuryTitle,
+      bodyArea,
+      painLevel,
+      notes,
+      analysis
     });
 
     return NextResponse.json({
-      analysisId: analysis.id,
-      ...analysis.result
+      reportId: report.id,
+      analysis: report.analysis
     });
   } catch (error) {
     console.error("Analysis failed", error);
     return NextResponse.json({ error: "Unable to analyze the image right now." }, { status: 500 });
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const session = getAuthPayloadFromRequest(request);
-
-    if (!session) {
-      return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-    }
-
-    const analysisId = request.nextUrl.searchParams.get("id");
-
-    if (!analysisId) {
-      return NextResponse.json({ error: "Analysis id is required." }, { status: 400 });
-    }
-
-    const analysis = await findAnalysisByIdForUser(analysisId, session.sub);
-
-    if (!analysis) {
-      return NextResponse.json({ error: "Analysis not found." }, { status: 404 });
-    }
-
-    return NextResponse.json(analysis);
-  } catch (error) {
-    console.error("Analysis lookup failed", error);
-    return NextResponse.json({ error: "Unable to load the analysis." }, { status: 500 });
   }
 }

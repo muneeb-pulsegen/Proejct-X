@@ -1,42 +1,47 @@
 import Link from "next/link";
 
+import { getCurrentUser, getRoleHomePath } from "@/lib/auth";
+
 const workflow = [
   {
-    title: "Secure patient entry",
-    body: "Minimal sign-in keeps access gated without slowing down the first-use flow."
+    title: "Role-aware access",
+    body: "Players submit reports while coaches run team-level oversight from their own dashboard."
   },
   {
-    title: "Guided image upload",
-    body: "Users preview the wound image before analysis so the submission feels confident and clear."
+    title: "Team invites",
+    body: "Coaches add existing player accounts to their team with a clean invite-and-accept flow."
   },
   {
-    title: "Structured AI summary",
-    body: "The result returns wound type, severity, expected healing window, and next-step suggestions."
+    title: "Team analytics",
+    body: "Team injury statistics, flagged players, and clear operational insights power the coach view."
   }
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const user = await getCurrentUser();
+  const startPath = user ? getRoleHomePath(user.role) : "/signup";
+
   return (
     <div className="flex flex-1 flex-col gap-20 pb-10 pt-4 sm:gap-24">
       <section className="grid gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
         <div className="space-y-8">
-          <span className="eyebrow">AI-assisted wound intake</span>
+          <span className="eyebrow">Injury reporting platform</span>
           <div className="space-y-6">
             <p className="text-sm font-semibold uppercase tracking-[0.28em] text-slate-500">
               InjuryX
             </p>
             <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-slate-950 sm:text-6xl">
-              Triage wound photos with a calm, structured first read.
+              Run player injury reporting and coach oversight from one calm system.
             </h1>
             <p className="section-copy">
-              InjuryX is a lightweight clinical MVP for image-based wound analysis. Users can sign
-              in, upload a photo, and receive a clean AI summary in seconds, with the infrastructure
-              already set up for secure auth and persistent storage.
+              InjuryX now supports player and coach accounts, team invites, structured injury
+              reports, and a coach dashboard that turns player submissions into readable team
+              signals.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link className="btn-primary" href="/upload">
-              Start Analysis
+            <Link className="btn-primary" href={startPath}>
+              {user ? "Open Workspace" : "Get Started"}
             </Link>
             <Link className="btn-secondary" href="/signup">
               Create Account
@@ -50,19 +55,19 @@ export default function HomePage() {
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
                 Auth
               </p>
-              <p className="mt-2 leading-6">JWT in HTTP-only cookies with protected routes.</p>
+              <p className="mt-2 leading-6">JWT in HTTP-only cookies with role-based protected routes.</p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Analysis
+                Teamwork
               </p>
-              <p className="mt-2 leading-6">Mock AI results today, Gemini-ready later if needed.</p>
+              <p className="mt-2 leading-6">Coaches invite existing players and review their submissions centrally.</p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Storage
+                Analytics
               </p>
-              <p className="mt-2 leading-6">MongoDB when configured, in-memory fallback otherwise.</p>
+              <p className="mt-2 leading-6">Live team-wide injury intelligence with coach-ready summaries and trends.</p>
             </div>
           </div>
         </div>
@@ -70,11 +75,11 @@ export default function HomePage() {
         <div className="relative min-h-[560px]">
           <div className="absolute right-6 top-2 h-40 w-40 rounded-full bg-sky-200/60 blur-3xl" />
           <div className="absolute bottom-12 left-0 h-48 w-48 rounded-full bg-blue-100/70 blur-3xl" />
-          <div className="panel relative flex h-full min-h-[560px] flex-col overflow-hidden p-6 sm:p-8">
+              <div className="panel relative flex h-full min-h-[560px] flex-col overflow-hidden p-6 sm:p-8">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-700">
-                  Live demo surface
+                  Coach workspace
                 </p>
                 <h2 className="mt-3 text-2xl font-semibold text-slate-950">
                   Analysis dashboard preview
@@ -90,15 +95,15 @@ export default function HomePage() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs uppercase tracking-[0.24em] text-blue-200">
-                      Latest classification
+                      Team injury snapshot
                     </p>
-                    <p className="mt-3 text-3xl font-semibold">Diabetic Ulcer</p>
+                    <p className="mt-3 text-3xl font-semibold">4 active flags</p>
                     <p className="mt-2 max-w-sm text-sm leading-6 text-slate-300">
-                      Moderate severity with a healing window estimated at two to four weeks.
+                      Coaches see severity mix, recent pain trends, and recovery windows across the roster.
                     </p>
                   </div>
                   <div className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-blue-100">
-                    87% confidence
+                    Team overview
                   </div>
                 </div>
               </div>
@@ -129,16 +134,12 @@ export default function HomePage() {
 
                 <div className="rounded-[24px] border border-slate-200 bg-white/92 p-6">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                    Care guidance
+                    What changes in V2
                   </p>
                   <ul className="mt-5 space-y-4 text-sm leading-6 text-slate-700">
-                    <li className="border-b border-slate-100 pb-4">
-                      Clean the wound gently and redress it daily.
-                    </li>
-                    <li className="border-b border-slate-100 pb-4">
-                      Monitor for redness spread, odor, and rising warmth.
-                    </li>
-                    <li>Escalate to an in-person clinician if symptoms worsen.</li>
+                    <li className="border-b border-slate-100 pb-4">Dedicated player and coach accounts.</li>
+                    <li className="border-b border-slate-100 pb-4">Profile images and team roster management.</li>
+                    <li>Shared report visibility between a player and their assigned coach.</li>
                   </ul>
                 </div>
               </div>
@@ -151,12 +152,12 @@ export default function HomePage() {
         <div className="space-y-4">
           <span className="eyebrow">Built for a first release</span>
           <h2 className="section-title">
-            Clean enough for demo day, sturdy enough to keep growing.
+            Ready for launch, sturdy enough to keep growing.
           </h2>
           <p className="section-copy">
             The MVP keeps the moving parts understandable: simple credentials, cookie-based auth,
-            one upload flow, one results surface, and backend routes that can grow into a real
-            clinical pipeline without a rewrite.
+            one upload flow, one results surface, and backend routes that can grow into a full
+            team operations platform without a rewrite.
           </p>
         </div>
 
@@ -165,10 +166,9 @@ export default function HomePage() {
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
               Product shape
             </p>
-            <p className="text-xl font-semibold text-slate-950">Landing, auth, upload, result.</p>
+            <p className="text-xl font-semibold text-slate-950">Landing, role auth, dashboards, team, upload, result.</p>
             <p className="text-sm leading-7 text-slate-600">
-              No dead-end pages, no placeholder labyrinth, just the core experience wired
-              end-to-end.
+              One connected experience for both sides of the workflow, from player reporting to coach oversight.
             </p>
           </div>
           <div className="space-y-3">
@@ -176,10 +176,10 @@ export default function HomePage() {
               Backend shape
             </p>
             <p className="text-xl font-semibold text-slate-950">
-              API routes with JWT, bcrypt-compatible hashing, and persistence helpers.
+              Teams, invites, reports, role-aware sessions, and built-in injury analytics.
             </p>
             <p className="text-sm leading-7 text-slate-600">
-              MongoDB is supported out of the box, but local development still works without it.
+              The platform is structured for secure growth as usage, team size, and reporting volume scale up.
             </p>
           </div>
         </div>

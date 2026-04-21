@@ -5,7 +5,7 @@ import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
   title: "InjuryX",
-  description: "Secure wound image upload with AI-assisted analysis summaries."
+  description: "Secure injury reporting for players and team oversight for coaches."
 };
 
 export default function RootLayout({

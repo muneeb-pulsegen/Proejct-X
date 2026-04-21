@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 import {
   comparePassword,
+  sessionFromUser,
   setAuthCookie,
   signAuthToken,
   validateEmailFormat
 } from "@/lib/auth";
-import { findUserByEmail } from "@/lib/db";
+import { assignUserToTeam, findTeamByCoachUserId, findUserByEmail } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,16 +30,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
     }
 
-    const token = signAuthToken({ sub: user.id, email: user.email });
+    const team = user.role === "coach" ? await findTeamByCoachUserId(user.id) : null;
+    const signedInUser =
+      user.role === "coach" && team
+        ? (user.teamId === team.id ? user : await assignUserToTeam(user.id, team.id)) || {
+            ...user,
+            teamId: team.id
+          }
+        : user;
     const response = NextResponse.json({
       user: {
-        id: user.id,
-        email: user.email
+        id: signedInUser.id,
+        email: signedInUser.email,
+        role: signedInUser.role,
+        name: signedInUser.name,
+        teamId: signedInUser.teamId
       }
     });
 
-    setAuthCookie(response, token);
-
+    setAuthCookie(response, signAuthToken(sessionFromUser(signedInUser)));
     return response;
   } catch (error) {
     console.error("Login failed", error);

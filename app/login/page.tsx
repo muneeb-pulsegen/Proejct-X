@@ -14,7 +14,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <div className="space-y-6">
         <span className="eyebrow">Welcome back</span>
         <div className="space-y-4">
-          <h1 className="section-title">Sign in to continue your wound analysis workflow.</h1>
+          <h1 className="section-title">Sign in to continue your injury reporting workflow.</h1>
           <p className="section-copy">
             Minimal credentials, secure cookie sessions, and a direct path back to uploading and
             reviewing results.
@@ -31,7 +31,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </div>
       </div>
 
-      <AuthForm mode="login" redirectTo={next || "/upload"} />
+      <AuthForm mode="login" redirectTo={next || ""} />
     </section>
   );
 }

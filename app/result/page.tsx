@@ -1,10 +1,9 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import ResultCard from "@/components/ResultCard";
-import { AUTH_COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
-import { findAnalysisByIdForUser } from "@/lib/db";
+import { requireCurrentUser } from "@/lib/auth";
+import { findReportById, findUserById } from "@/lib/db";
 
 type ResultPageProps = {
   searchParams: Promise<{
@@ -14,42 +13,36 @@ type ResultPageProps = {
 
 export default async function ResultPage({ searchParams }: ResultPageProps) {
   const { id } = await searchParams;
+  const user = await requireCurrentUser();
 
   if (!id) {
-    redirect("/upload");
+    redirect(user.role === "coach" ? "/coach/dashboard" : "/upload");
   }
 
-  const cookieStore = await cookies();
-  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
-  const session = token ? verifyAuthToken(token) : null;
+  const report = await findReportById(id);
 
-  if (!session) {
-    redirect("/login");
-  }
-
-  const analysis = await findAnalysisByIdForUser(id, session.sub);
-
-  if (!analysis) {
+  if (!report) {
     return (
       <section className="flex flex-1 items-center justify-center py-14">
         <div className="panel max-w-xl p-8 text-center">
           <span className="eyebrow">No result found</span>
-          <h1 className="mt-5 text-3xl font-semibold text-slate-950">That analysis could not be loaded.</h1>
+          <h1 className="mt-5 text-3xl font-semibold text-slate-950">That injury report could not be loaded.</h1>
           <p className="mt-4 text-base leading-7 text-slate-600">
-            It may have expired from the in-memory fallback or the link may be incomplete. Upload a
-            new image to generate another result.
+            The link may be incomplete or the report may not exist in the current storage session.
           </p>
-          <div className="mt-8 flex justify-center gap-3">
-            <Link className="btn-primary" href="/upload">
-              Upload another image
-            </Link>
-            <Link className="btn-secondary" href="/">
-              Back home
-            </Link>
-          </div>
         </div>
       </section>
     );
+  }
+
+  const player = await findUserById(report.playerUserId);
+  const canView =
+    user.role === "player"
+      ? report.playerUserId === user.id
+      : Boolean(player?.teamId && player.teamId === user.teamId);
+
+  if (!canView) {
+    redirect(user.role === "coach" ? "/coach/dashboard" : "/player/dashboard");
   }
 
   return (
@@ -57,20 +50,28 @@ export default async function ResultPage({ searchParams }: ResultPageProps) {
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-3">
           <span className="eyebrow">Analysis result</span>
-          <h1 className="section-title">Structured wound summary ready for review.</h1>
+          <h1 className="section-title">Structured injury report ready for review.</h1>
           <p className="section-copy">
-            The image and AI findings below are tied to the current authenticated user session.
+            {user.role === "coach"
+              ? "You are viewing a player report from your team."
+              : "This report stays visible to you and, if assigned, to your coach."}
           </p>
         </div>
-        <Link className="btn-secondary" href="/upload">
-          Analyze another image
+        <Link className="btn-secondary" href={user.role === "coach" ? "/coach/dashboard" : "/upload"}>
+          {user.role === "coach" ? "Back to dashboard" : "Submit another report"}
         </Link>
       </div>
 
       <ResultCard
-        createdAt={analysis.createdAt}
-        imageData={analysis.imageData}
-        result={analysis.result}
+        bodyArea={report.bodyArea}
+        createdAt={report.createdAt}
+        extraImages={report.extraImages}
+        injuryImageData={report.injuryImageData}
+        injuryTitle={report.injuryTitle}
+        notes={report.notes}
+        painLevel={report.painLevel}
+        playerName={player?.name}
+        result={report.analysis}
       />
     </section>
   );

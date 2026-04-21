@@ -9,10 +9,12 @@ type AuthFormProps = {
   redirectTo?: string;
 };
 
-export default function AuthForm({ mode, redirectTo = "/upload" }: AuthFormProps) {
+export default function AuthForm({ mode, redirectTo = "" }: AuthFormProps) {
   const router = useRouter();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"player" | "coach">("player");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -29,7 +31,7 @@ export default function AuthForm({ mode, redirectTo = "/upload" }: AuthFormProps
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ email, password })
+          body: JSON.stringify(isLogin ? { email, password } : { name, email, password, role })
         });
 
         const data = await response.json();
@@ -39,7 +41,8 @@ export default function AuthForm({ mode, redirectTo = "/upload" }: AuthFormProps
           return;
         }
 
-        router.push(redirectTo);
+        const destination = redirectTo || (data.user?.role === "coach" ? "/coach/dashboard" : "/player/dashboard");
+        router.push(destination);
         router.refresh();
       } catch (requestError) {
         console.error(`${mode} request failed`, requestError);
@@ -65,6 +68,49 @@ export default function AuthForm({ mode, redirectTo = "/upload" }: AuthFormProps
       </div>
 
       <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+        {!isLogin ? (
+          <>
+            <div>
+              <label className="label" htmlFor={`${mode}-name`}>
+                Full Name
+              </label>
+              <input
+                className="field"
+                id={`${mode}-name`}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Taylor Morgan"
+                required
+                type="text"
+                value={name}
+              />
+            </div>
+            <div>
+              <label className="label">Account Type</label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {(["player", "coach"] as const).map((value) => (
+                  <button
+                    className={`rounded-[22px] border px-4 py-4 text-left transition ${
+                      role === value
+                        ? "border-blue-200 bg-blue-50 text-blue-900"
+                        : "border-slate-200 bg-white text-slate-700"
+                    }`}
+                    key={value}
+                    onClick={() => setRole(value)}
+                    type="button"
+                  >
+                    <p className="text-sm font-semibold capitalize">{value}</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {value === "player"
+                        ? "Submit injury reports and manage invites."
+                        : "Create a team, invite players, and view analytics."}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : null}
+
         <div>
           <label className="label" htmlFor={`${mode}-email`}>
             Email
